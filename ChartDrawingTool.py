@@ -16,7 +16,7 @@ class ChartDrawingInput(BaseModel):
 
 class ChartDrawingTool(BaseTool):
     name: str = "chart_drawing"
-    description: str  = "根据解析出的 JSON 数据和目标图表类型target_type，调用大模型生成绘图代码并绘制图表。入参为图表数据 JSON 字符串和目标图表类型（如 bar、line、pie,scatter等）"
+    description: str  = "根据解析出的 JSON 数据和目标图表类型target_type，调用大模型生成绘图代码并绘制图表。入参为两个,json格式的数据和目标图表类型（如 bar、line、pie,scatter等）"
     args_schema: Type[BaseModel] = ChartDrawingInput
 
     def _run(self, chart_data_json: dict, target_type: str):
@@ -24,11 +24,9 @@ class ChartDrawingTool(BaseTool):
         self._validate_input(chart_data_json, target_type)
         # 调用大模型生成绘图代码
         code = self._generate_drawing_code(chart_data_json, target_type)
-        # 过滤危险代码
-        safe_code = self._filter_dangerous_code(code)
+    
         # 执行安全代码并获取绘图结果
-        result = self._execute_code(safe_code)
-        return result
+        return code
 
     def _validate_input(self, chart_data_json, target_type):
         # 验证目标类型是否合法
@@ -57,12 +55,6 @@ class ChartDrawingTool(BaseTool):
         ]
         response = model.invoke(messages)
         return response.content
-
-    def _filter_dangerous_code(self, code):
-        for func in DANGEROUS_FUNCTIONS:
-            if re.search(re.escape(func), code):
-                raise ValueError(f"检测到危险代码：{func}。不允许执行包含此代码的绘图脚本。")
-        return code
 
     def _execute_code(self, code):
         try:
